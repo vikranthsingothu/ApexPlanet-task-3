@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-400 to-purple-600 min-h-screen flex items-center justify-center p-4">
+
+    <div class="bg-white bg-opacity-90 rounded-2xl shadow-xl p-6 sm:p-8 md:p-10 max-w-md w-full text-center transform transition-all duration-300 hover:scale-105">
+        <h1 class="text-3xl sm:text-4xl font-bold text-gray-800 mb-6">Weather Forecast</h1>
+
+        <div class="flex flex-col sm:flex-row gap-4 mb-6">
+            <input
+                type="text"
+                id="cityInput"
+                placeholder="Enter city name..."
+                class="flex-grow p-3 rounded-xl border-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700 transition-all duration-200"
+            >
+            <button
+                id="fetchWeatherBtn"
+                class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-xl shadow-md transition-all duration-200 transform hover:-translate-y-1 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            >
+                Get Weather
+            </button>
+        </div>
+
+        <div id="loadingIndicator" class="hidden text-blue-600 font-medium mb-4">
+            Loading weather data...
+        </div>
+
+        <div id="weatherDisplay" class="hidden">
+            <h2 id="cityName" class="text-2xl sm:text-3xl font-semibold text-gray-700 mb-2"></h2>
+            <p id="temperature" class="text-4xl sm:text-5xl font-bold text-blue-700 mb-2"></p>
+            <p id="description" class="text-xl sm:text-2xl text-gray-600 mb-4 capitalize"></p>
+            <img id="weatherIcon" src="" alt="Weather icon" class="mx-auto w-20 h-20 mb-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-gray-700 text-lg">
+                <p>Humidity: <span id="humidity" class="font-semibold"></span>%</p>
+                <p>Wind Speed: <span id="windSpeed" class="font-semibold"></span> m/s</p>
+            </div>
+        </div>
+
+        <div id="errorMessage" class="hidden text-red-600 font-medium mt-4">
+            </div>
+    </div>
+
+    <script>
+        // Get references to HTML elements
+        const cityInput = document.getElementById('cityInput');
+        const fetchWeatherBtn = document.getElementById('fetchWeatherBtn');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const weatherDisplay = document.getElementById('weatherDisplay');
+        const cityName = document.getElementById('cityName');
+        const temperature = document.getElementById('temperature');
+        const description = document.getElementById('description');
+        const weatherIcon = document.getElementById('weatherIcon');
+        const humidity = document.getElementById('humidity');
+        const windSpeed = document.getElementById('windSpeed');
+        const errorMessage = document.getElementById('errorMessage');
+
+        // IMPORTANT: Replace 'YOUR_API_KEY_HERE' with your actual OpenWeatherMap API key.
+        // You can get one for free from https://openweathermap.org/api
+        const API_KEY = 'e608b456ce0136e86a2a2a33d86b5e2a'; // Updated API key
+        const BASE_URL = 'https://api.openweathermap.org/data/2.5/weather';
+
+        /**
+         * Hides all display sections (weather, loading, error) to prepare for new content.
+         */
+        function hideAllDisplays() {
+            weatherDisplay.classList.add('hidden');
+            loadingIndicator.classList.add('hidden');
+            errorMessage.classList.add('hidden');
+        }
+
+        /**
+         * Fetches weather data for a given city from the OpenWeatherMap API.
+         * @param {string} city - The name of the city.
+         */
+        async function fetchWeatherData(city) {
+            hideAllDisplays(); // Clear previous displays
+            loadingIndicator.classList.remove('hidden'); // Show loading indicator
+
+            try {
+                const response = await fetch(`${BASE_URL}?q=${city}&appid=${API_KEY}&units=metric`); // units=metric for Celsius
+
+                if (!response.ok) {
+                    // Handle HTTP errors (e.g., 404 for city not found, 401 for invalid API key)
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                displayWeatherData(data); // Display the fetched data
+            } catch (error) {
+                console.error('Error fetching weather data:', error);
+                errorMessage.textContent = `Failed to fetch weather: ${error.message}. Please try again.`;
+                errorMessage.classList.remove('hidden'); // Show error message
+            } finally {
+                loadingIndicator.classList.add('hidden'); // Hide loading indicator
+            }
+        }
+
+        /**
+         * Displays the fetched weather data on the webpage.
+         * @param {object} data - The weather data object from the API.
+         */
+        function displayWeatherData(data) {
+            // Check if data is valid and contains necessary properties
+            if (!data || !data.name || !data.main || !data.weather || !data.wind) {
+                errorMessage.textContent = 'Invalid weather data received. Please try again.';
+                errorMessage.classList.remove('hidden');
+                return;
+            }
+
+            cityName.textContent = data.name;
+            temperature.textContent = `${Math.round(data.main.temp)}°C`;
+            description.textContent = data.weather[0].description;
+            // Construct the icon URL. OpenWeatherMap provides icons based on their 'icon' code.
+            weatherIcon.src = `https://openweathermap.org/img/wn/${data.weather[0].icon}@2x.png`;
+            weatherIcon.alt = data.weather[0].main; // Set alt text for accessibility
+            humidity.textContent = data.main.humidity;
+            windSpeed.textContent = data.wind.speed;
+
+            weatherDisplay.classList.remove('hidden'); // Show the weather display section
+        }
+
+        // Event Listener for the button click
+        fetchWeatherBtn.addEventListener('click', () => {
+            const city = cityInput.value.trim(); // Get city name and remove leading/trailing spaces
+            if (city) {
+                fetchWeatherData(city);
+            } else {
+                hideAllDisplays();
+                errorMessage.textContent = 'Please enter a city name.';
+                errorMessage.classList.remove('hidden');
+            }
+        });
+
+        // Event Listener for 'Enter' key press in the input field
+        cityInput.addEventListener('keypress', (event) => {
+            if (event.key === 'Enter') {
+                fetchWeatherBtn.click(); // Simulate a click on the button
+            }
+        });
+
+        // Initial fetch for a default city (e.g., London) when the page loads
+        // You can remove this if you prefer the user to always enter a city first.
+        window.onload = () => {
+            fetchWeatherData('London');
+        };
+    </script>
+</body>
+</html>
